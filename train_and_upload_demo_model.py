@@ -5,6 +5,7 @@ import urllib
 import libsvm_formatter
 
 from optparse import OptionParser
+from multiprocessing import Pool
 
 solrQueryUrl = ""
 
@@ -50,17 +51,18 @@ def setupSolr(collection, host, port, featuresFile, featureStoreName):
     print "...New feature set successfully uploaded..."
 
 
-def generateQueries(userQueriesFile, collection, requestHandler, solrFeatureStoreName, efiParams):
-        with open(userQueriesFile) as input:
-            solrQueryUrls = [] #A list of tuples with solrQueryUrl,solrQuery,docId,scoreForPQ,source
+def generateQueries(userQueriesFile, collection, requestHandler, solrFeatureStoreName, efiParams, host, port):
 
-            for line in input:
-                line = line.strip();
-                searchText,docId,score,source = line.split("|");
-                solrQuery = generateHttpRequest(collection,requestHandler,solrFeatureStoreName,efiParams,searchText,docId)
-                solrQueryUrls.append((solrQuery,searchText,docId,score,source))
+    solrQueryUrls = [] # A list of tuples with solrQueryUrl,solrQuery,docId,scoreForPQ,source
+    with open(userQueriesFile) as input:
 
-        return solrQueryUrls;
+        for line in input:
+            line = line.strip();
+            searchText,docId,score,source = line.split("|");
+            solrQuery = generateHttpRequest(collection,requestHandler,solrFeatureStoreName,efiParams,searchText,docId)
+            solrQueryUrls.append((solrQuery,searchText,docId,score,source,host,port))
+
+    return solrQueryUrls
 
 
 def generateHttpRequest(collection, requestHandler, solrFeatureStoreName, efiParams, searchText, docId):
@@ -83,44 +85,47 @@ def generateHttpRequest(collection, requestHandler, solrFeatureStoreName, efiPar
     return solrQuery
 
 
-def generateTrainingData(solrQueries, host, port):
+def generateTrainingData(solrQuery):
     '''Given a list of solr queries, yields a tuple of query , docId , score , source , feature vector for each query.
     Feature Vector is a list of strings of form "key=value"'''
+
+
+    queryUrl,query,docId,score,source, host, port = solrQuery
+
     conn = httplib.HTTPConnection(host, port)
     headers = {"Connection":" keep-alive"}
 
     try:
-        for queryUrl,query,docId,score,source in solrQueries:
-            conn.request("GET", queryUrl, headers=headers)
-            r = conn.getresponse()
-            msg = r.read()
-            msgDict = json.loads(msg)
-            fv = ""
-            docs = msgDict['response']['docs']
-            if len(docs) > 0 and "[features]" in docs[0]:
-                if not msgDict['response']['docs'][0]["[features]"] == None:
-                    fv = msgDict['response']['docs'][0]["[features]"];
-                else:
-                    print "ERROR NULL FV FOR: " + docId;
-                    print msg
-                    continue;
+        conn.request("GET", queryUrl, headers=headers)
+        r = conn.getresponse()
+        msg = r.read()
+        msgDict = json.loads(msg)
+        fv = ""
+        docs = msgDict['response']['docs']
+        if len(docs) > 0 and "[features]" in docs[0]:
+            if not msgDict['response']['docs'][0]["[features]"] == None:
+                fv = msgDict['response']['docs'][0]["[features]"];
             else:
-                print "ERROR FOR: " + docId;
+                print "ERROR NULL FV FOR: " + docId;
                 print msg
-                print >> sys.stderr, docId
-                continue;
+                return ()
+        else:
+            print "ERROR FOR: " + docId;
+            print msg
+            print >> sys.stderr, docId
+            return ()
 
-            if r.status == httplib.OK:
-                print "...http connection was ok for: " + queryUrl
-                yield(query,docId,score,source,fv.split(","));
-            else:
-                raise Exception("Status: {0} {1}\nResponse: {2}".format(r.status, r.reason, msg))
+        if r.status == httplib.OK:
+            print "...http connection was ok for: " + queryUrl
+            conn.close()
+            return (query,docId,score,source,fv.split(","))
+        else:
+            raise Exception("Status: {0} {1}\nResponse: {2}".format(r.status, r.reason, msg))
+            return ()
+
     except Exception as e:
         print msg
         print e
-
-    conn.close()
-
 
 def uploadModel(collection, host, port, modelFile, modelName):
     modelUrl = "/solr/" + collection + "/schema/model-store"
@@ -167,10 +172,16 @@ def main(argv=None):
         setupSolr(config["collection"], config["host"], config["port"], config["solrFeaturesFile"], config["solrFeatureStoreName"])
 
         print "Converting user queries ("+config["userQueriesFile"]+") into Solr queries for feature extraction"
-        reRankQueries = generateQueries(config["userQueriesFile"], config["collection"], config["requestHandler"], config["solrFeatureStoreName"], config["efiParams"])
+        reRankQueries = generateQueries(config["userQueriesFile"], config["collection"], config["requestHandler"], config["solrFeatureStoreName"], config["efiParams"], config["host"], config["port"])
 
         print "Running Solr queries to extract features"
-        fvGenerator = generateTrainingData(reRankQueries, config["host"], config["port"])
+
+        pool = Pool(processes=None)
+        fvGenerator = pool.map(generateTrainingData, reRankQueries)
+        #fvGenerator = generateTrainingData(reRankQueries)
+
+        fvGenerator = [t for t in fvGenerator if len(t) > 0]
+
         #print list(fvGenerator)
         formatter = libsvm_formatter.LibSvmFormatter()
         formatter.processQueryDocFeatureVector(fvGenerator,config["trainingFile"])
@@ -192,5 +203,8 @@ def main(argv=None):
 
         print "Uploading model ("+config["solrModelFile"]+") to Solr"
         uploadModel(config["collection"], config["host"], config["port"], config["solrModelFile"], config["solrModelName"])
+
 if __name__ == '__main__':
     sys.exit(main())
+
+
