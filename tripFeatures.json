@@ -102,19 +102,19 @@
         }
     },
     {
+        "store" : "TripFeatures",
+        "name" : "BoostWeightScore",
+        "class" : "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "q" : "{!boost b=Weight}{!field f=TitleNoSyn}${user_query}","fq":["{!field f=TitleAndBody}${user_query}"]
+        }
+    },
+    {
         "store": "TripFeatures",
         "name": "IsOncology",
         "class": "org.apache.solr.ltr.feature.SolrFeature",
         "params" : {
             "fq": [ "{!terms f=ClinicalArea}Oncology" ]
-        }
-    },
-    {
-        "store": "TripFeatures",
-        "name": "IsCat11",
-        "class": "org.apache.solr.ltr.feature.SolrFeature",
-        "params" : {
-            "fq": [ "{!terms f=Category}14" ]
         }
     }
 ]
