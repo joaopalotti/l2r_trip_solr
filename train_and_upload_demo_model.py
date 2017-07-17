@@ -79,7 +79,6 @@ def generateHttpRequest(collection, requestHandler, solrFeatureStoreName, efiPar
     solrQuery = solrQueryUrl + '"' + urllib.quote_plus(docId) + '"' #+ solrQueryUrlEnd
     solrQuery = solrQuery.replace('$USERQUERY', urllib.quote("\\'" + userQuery + "\\'"))
     solrQuery = solrQuery.replace('$QUERYCOMMA', userQueryComma)
-    solrQuery = solrQuery.replace('$MODSCORE', "bla")
 
     return solrQuery
 
@@ -108,6 +107,7 @@ def generateTrainingData(solrQueries, host, port):
             else:
                 print "ERROR FOR: " + docId;
                 print msg
+                print >> sys.stderr, docId
                 continue;
 
             if r.status == httplib.OK:
