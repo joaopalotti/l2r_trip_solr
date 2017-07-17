@@ -111,10 +111,98 @@
     },
     {
         "store": "TripFeatures",
-        "name": "IsOncology",
+        "name": "IsSystematicReview",
         "class": "org.apache.solr.ltr.feature.SolrFeature",
         "params" : {
-            "fq": [ "{!terms f=ClinicalArea}Oncology" ]
+            "fq": [ "{!terms f=Category}11" ]
         }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "IsEvidBasedSynopses",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "fq": [ "{!terms f=Category}1" ]
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "IsClinicalQuestion",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "fq": [ "{!terms f=Category}2" ]
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "IsCategoryOther",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "fq": [ "{!terms f=Category}4" ]
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "IsPatientInfo",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "fq": [ "{!terms f=Category}8" ]
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "IsPrimaryResearch",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "fq": [ "{!terms f=Category}14" ]
+        }
+    }, 
+    {
+        "store": "TripFeatures",
+        "name": "IsRCT",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "fq": [ "{!terms f=Category}27" ]
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "IsBlog",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "fq": [ "{!terms f=Category}29" ]
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "IsRegulatoryGuidance",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "fq": [ "{!terms f=Category}34" ]
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "IsCountryCategory",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "fq": [ "Category:(10 OR 4 OR 16 OR 18 OR 9)" ]
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "IsFilteredCategory",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "fq": [ "Category:(11 OR 1 OR 16 OR 18 OR 10 OR 9 OR 4 OR 2 OR 13 OR 14 OR 5 OR 27 OR 22 OR 29)" ]
+        }   
+    },
+    {
+        "store": "TripFeatures",
+        "name": "IsImportantPublisher",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "fq": [ "Publication:(14 OR 26 OR 35 OR 44 OR 57 OR 81 OR 83 OR 110 OR 112 OR 254 OR 257 OR 265 OR 266 OR 268 OR 272 OR 273 OR 274 OR 275 OR 276 OR 277 OR 278 OR 279 OR 280 OR 281 OR 282 OR 283 OR 285 OR 286 OR 287 OR 288 OR 305 OR 318 OR 322 OR 334 OR 339 OR 341 OR 367 OR 370 OR 381 OR 382 OR 383 OR 386 OR 398 OR 399 OR 400 OR 405 OR 406 OR 407 OR 690 OR 691 OR 692 OR 694 OR 695 OR 696 OR 697 OR 1094 OR 1168 OR 1393 OR 1513 OR 1558 OR 1560 OR 1566 OR 1567 OR 1568 OR 1577 OR 1580 OR 1587 OR 1591 OR 1594 OR 1595 OR 1596 OR 4877091 OR 4878424 OR 4878425 OR 4878426 OR 4878428 OR 4878615 OR 4878888 OR 4878904 OR 4880028 OR 4880071 OR 4880072 OR 4880166 OR 4880167 OR 4880168 OR 4880170 OR 4880655 OR 4880657 OR 4880701 OR 4880702 OR 4880703 OR 4880704 OR 4880705 OR 4880707 OR 4880708 OR 4880709 OR 4885982 OR 4886805 OR 4886806 OR 4886807 OR 4886833 OR 4886834 OR 4886880 OR 4886916 OR 4886917 OR 4886938 OR 4886954 OR 4886955 OR 4886956 OR 4886977 OR 4886994 OR 4887446 OR 4887485 OR 4887514 OR 4887515 OR 4887516 OR 4887517 OR 4887628 OR 4887666 OR 4887678 OR 4887687 OR 4887693 OR 4887694 OR 4887695)" ]
+        }   
     }
 ]
