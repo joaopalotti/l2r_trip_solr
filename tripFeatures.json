@@ -1,0 +1,120 @@
+[
+    {
+        "store": "TripFeatures",
+        "name" : "documentRecency",
+        "class" : "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+        "q" : "{!func}recip( ms(NOW, SortDate), 3.16e-11, 1, 1)"
+        }
+    },
+    {
+        "store" : "TripFeatures",
+        "name" : "originalScore",
+        "class" : "org.apache.solr.ltr.feature.OriginalScoreFeature",
+        "params" : {}
+    },
+    {
+        "store" : "TripFeatures",
+        "name" : "titleAndBodyNoSynPhraseMatch",
+        "class" : "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "q" : "{!field f=TitleAndBodyNoSyn}${user_query}"
+        }
+    },
+    {
+        "store" : "TripFeatures",
+        "name" : "titleAndBodyPhraseMatch",
+        "class" : "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "q" : "{!field f=TitleAndBody}${user_query}"
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "TitlePhaseFreq",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params": {
+            "q" : "{!func}termfreq(Title,${user_query})"
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "TitleAndBodyPhaseFreq",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params": {
+            "q" : "{!func}termfreq(TitleAndBody,${user_query})"
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "TitleAndBodyNoSynPhaseFreq",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params": {
+            "q" : "{!func}termfreq(TitleAndBodyNoSyn,${user_query})"
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "scoreTitle",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params": {
+            "q" : "{!dismax qf=Title v=${user_query}})"
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "scoreTitleAndBody",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params": {
+            "q" : "{!dismax qf=TitleAndBody v=${user_query}})"
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "scoreTitleAndBodyNoSyn",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params": {
+            "q" : "{!dismax qf=TitleAndBodyNoSyn v=${user_query}})"
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "combTitleAndTitleAndBody",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params": {
+            "q" : "{!edismax qf=\"Title^3.0 TitleAndBody^1.0\" v=${user_query}})"
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "maxScoreTitle",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params": {
+            "q" : "{!maxscore df=Title tie=0.01}${user_query}"
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "maxScoreTitleAndBody",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params": {
+            "q" : "{!maxscore df=TitleAndBody tie=0.01}${user_query}"
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "IsOncology",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "fq": [ "{!terms f=ClinicalArea}Oncology" ]
+        }
+    },
+    {
+        "store": "TripFeatures",
+        "name": "IsCat11",
+        "class": "org.apache.solr.ltr.feature.SolrFeature",
+        "params" : {
+            "fq": [ "{!terms f=Category}14" ]
+        }
+    }
+]

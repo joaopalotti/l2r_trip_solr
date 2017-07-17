@@ -1,0 +1,17 @@
+{
+  "host":                     "<REMOVED_FOR_PRIVACY>",
+  "port":                     80,
+  "collection":               "trip",
+  "requestHandler":           "query",
+  "q":                        "*:*",
+  "efiParams":                "efi.user_query=$USERQUERY efi.user_query_comma=$QUERYCOMMA",
+  "userQueriesFile":          "user_queries_small.txt",
+  "trainingFile":             "tripTrainingFile.txt",
+  "trainedModelFile":         "tripTrainedModel.txt",
+  "trainingLibraryLocation":  "/home/palotti/solr-6.4.1/trip_scripts/liblinear/train",
+  "trainingLibraryOptions":   "-q",
+  "solrFeaturesFile":         "tripFeatures.json",
+  "solrFeatureStoreName":     "TripFeatures",
+  "solrModelFile":            "tripModel.json",
+  "solrModelName":            "tripModel"
+}
