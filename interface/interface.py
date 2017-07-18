@@ -12,13 +12,30 @@ urls = (
 
 def connectQuery(searchText, host="solr65.tripdatabase.com", port="80", collection="trip", requestHandler="query",
             solrFeatureStoreName="TripFeatures", efiParams="efi.user_query=$USERQUERY efi.user_query_comma=$QUERYCOMMA",
-            rerank=None, ltr_model="tripModel"):
+            rerank=None, ltr_model="tripModel", likeInTrip=True):
 
     conn = httplib.HTTPConnection(host, port)
     headers = {"Connection":" keep-alive"}
     solrQueryUrl = "/".join([ "", "solr", collection, requestHandler ])
     solrQueryUrl += ("?fl=" + ",".join([ "Id", "score", "Title", "TitleAndBody", "Url", "SortDate", "[features store="+solrFeatureStoreName+" "+efiParams+"]" ]))
-    solrQueryUrl += " ".join(["&q=",searchText])
+
+    if likeInTrip:
+        # Include boost by Weight and search made only in the titleNoSyn:
+        searchTextInTitle = "+".join(["TitleNoSyn:%s" % (t) for t in searchText.split(" ")])
+        solrQueryUrl += " ".join(["&q={!boost b=Weight}",searchTextInTitle])
+
+        # add field filter to query
+        titleAndBodyFilter = "+AND+".join(["TitleAndBody:%s" % (t) for t in searchText.split(" ")])
+        solrQueryUrl += " ".join(["&fq=" + titleAndBodyFilter])
+
+        # add category filter to query
+        catFilter = "Category:(11 OR 1 OR 16 OR 18 OR 10 OR 9 OR 4 OR 2 OR 13 OR 14 OR 5 OR 27 OR 22 OR 29)"
+        solrQueryUrl += " ".join(["&fq=" + catFilter])
+
+    else:
+        # Plain search
+        solrQueryUrl += " ".join(["&q=",searchText])
+
     userQuery = urllib.quote_plus(searchText.strip().replace("'","\\'").replace("/","\\\\/"))
     userQueryComma = urllib.quote_plus(searchText.strip().replace("'","\\'").replace("/","\\\\/").replace(" ",","))
 
@@ -33,6 +50,7 @@ def connectQuery(searchText, host="solr65.tripdatabase.com", port="80", collecti
     solrQuery = solrQuery.replace('$USERQUERY', urllib.quote("\\'" + userQuery + "\\'"))
     solrQuery = solrQuery.replace('$QUERYCOMMA', userQueryComma)
 
+    print "Final Query: %s" % (solrQuery)
     docs = []
     try:
         #print "Querying: ", solrQuery
