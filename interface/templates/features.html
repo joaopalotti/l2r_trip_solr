@@ -1,0 +1,39 @@
+$def with (featureform, message)
+<html>
+
+    <head>
+        <title> Feature Configuration For Learning To Rank </title>
+    <style>
+      #container
+      {
+        position: relative;
+      }
+
+      #left-column
+      {
+        width: 50%;
+      }
+
+      #right-column
+      {
+        position: absolute;
+        top: 0px;
+        right: 0px;
+        bottom: 0px;
+        width: 50%;
+      }
+    </style>
+    </head>
+    $if message:
+        <h4> <font color="blue"> $message </font> </h4>
+
+    <body>
+    <form name="main" method="post"> 
+        $if not featureform.valid: 
+            <p class="error">Ops...found some error!</p>
+        $:featureform.render()
+    </form>
+    
+    </body>
+
+</html>
