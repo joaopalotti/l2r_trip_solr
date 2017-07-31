@@ -8,6 +8,7 @@ from web import form
 render = web.template.render('templates/')
 
 urls = (
+    '/', 'Index',
     '/query', 'query',
     '/features', 'features',
 )
@@ -67,6 +68,10 @@ def connectQuery(searchText, host="solr65.tripdatabase.com", port="80", collecti
         print e
     conn.close()
     return docs
+
+class Index:
+    def GET(self):
+        return render.index()
 
 class Doc:
     def __init__(self, id, title, url, titleAndBody, date=""):

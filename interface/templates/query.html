@@ -26,6 +26,7 @@ $def with (form, docs=[], docs2=[])
     </head>
     
     <body>
+    <a href="../"> Back </a>
     <form name="main" method="post"> 
         $if not form.valid: <p class="error">Ops...found some error!</p>
         $:form.render()
