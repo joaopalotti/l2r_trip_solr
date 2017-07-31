@@ -126,6 +126,7 @@ def generateTrainingData(solrQuery):
     except Exception as e:
         print msg
         print e
+        return ()
 
 def uploadModel(collection, host, port, modelFile, modelName):
     modelUrl = "/solr/" + collection + "/schema/model-store"
@@ -180,7 +181,7 @@ def main(argv=None):
         fvGenerator = pool.map(generateTrainingData, reRankQueries)
         #fvGenerator = generateTrainingData(reRankQueries)
 
-        fvGenerator = [t for t in fvGenerator if len(t) > 0]
+        fvGenerator = [t for t in fvGenerator if t and len(t) > 0]
 
         #print list(fvGenerator)
         formatter = libsvm_formatter.LibSvmFormatter()
