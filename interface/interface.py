@@ -9,8 +9,8 @@ render = web.template.render('templates/')
 
 urls = (
     '/', 'Index',
-    '/query', 'query',
-    '/features', 'features',
+    '/query', 'Query',
+    '/features', 'Features',
 )
 
 def connectQuery(searchText, host="solr65.tripdatabase.com", port="80", collection="trip", requestHandler="query",
@@ -89,7 +89,7 @@ queryform = form.Form(
     form.Dropdown("N", args=['All','3','5','10','20','50','100','500','1000','10000'], value='5', id="N", description="Number of documents to rerank:")
 )
 
-class query:
+class Query:
 
     def GET(self):
         f = queryform()
@@ -159,7 +159,7 @@ def saveState(f):
         newmodel["params"]["weights"][feat["name"]] = float(f[feat["name"]].value)
     return newmodel
 
-class features:
+class Features:
 
     def GET(self):
         f = featuresform()
