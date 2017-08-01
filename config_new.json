@@ -1,0 +1,19 @@
+{
+  "host":                     "localhost",
+  "port":                     80,
+  "collection":               "trip",
+  "requestHandler":           "query",
+  "q":                        "*:*",
+  "efiParams":                "efi.user_query=$USERQUERY efi.user_query_comma=$QUERYCOMMA",
+  "userQueriesFile":          "user_queries.txt",
+  "trainingFile":             "tripTrainingFile.txt",
+  "trainedModelFile":         "tripTrainedModel.txt",
+  "trainingLibraryLocation":  "/bigdata/palotti/trip/l2r_trip_solr/svmrank/svm_rank_learn",
+  "trainingLibraryOptions":   "-c 1.0",
+  "solrFeaturesFile":         "tripFeatures.json",
+  "solrFeatureStoreName":     "TripFeatures",
+  "solrModelFile":            "tripModel.json",
+  "solrModelName":            "tripModel",
+  "using_new_libsvm":         true,
+  "using_min_max":            true
+}

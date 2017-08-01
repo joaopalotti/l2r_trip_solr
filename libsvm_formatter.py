@@ -1,15 +1,11 @@
-from subprocess import call
 import json
-import os
 
 PAIRWISE_THRESHOLD = 1.e-1
 FEATURE_DIFF_THRESHOLD = 1.e-6
 
 class LibSvmFormatter:
-    def __init__(self, min_max):
-        self.min_max = min_max
 
-    def processQueryDocFeatureVector(self,docClickInfo,trainingFile):
+    def processQueryDocFeatureVector(self,docClickInfo,trainingFile, min_max=False):
         '''Expects as input a sorted by queries list or generator that provides the context
         for each query in a tuple composed of: (query , docId , relevance , source , featureVector).
         The list of documents that are part of the same query will generate comparisons
@@ -46,7 +42,7 @@ class LibSvmFormatter:
                 self.curFeatIndex += 1;
         return self.featureNameToId[key];
 
-    def convertLibSvmModelToLtrModel(self,libSvmModelLocation,outputFile,modelName,featureStoreName):
+    def convertLibSvmModelToLtrModel(self,libSvmModelLocation,outputFile,modelName,featureStoreName, useMinMax, min_max):
         with open(libSvmModelLocation, 'r') as inFile:
             content = {}
 
@@ -56,10 +52,13 @@ class LibSvmFormatter:
             content["features"] = []
 
             for featKey in self.featureNameToId.keys():
-                #norm = {"class": "org.apache.solr.ltr.norm.MinMaxNormalizer",  "params":{ "min":"0", "max":"1" } }
-                #norm = {"class": "org.apache.solr.ltr.norm.StandardNormalizer",  "params":{ "avg":"0", "std":"1" } }
-                #content["features"].append({"name" : featKey, "norm": norm})
-                content["features"].append({"name" : featKey})
+                if useMinMax:
+                    min_, max_ = min_max[featKey]["min"], min_max[featKey]["max"]
+                    norm = {"class": "org.apache.solr.ltr.norm.MinMaxNormalizer",  "params":{ "min": min_, "max": max_ } }
+                    content["features"].append({"name" : featKey, "norm": norm})
+                else:
+                    content["features"].append({"name" : featKey})
+
             content["params"] = {"weights":{}}
 
             startReading = False
@@ -120,9 +119,3 @@ def outputLibSvmLine(sign,fvMap,outputFile):
     for feat in fvMap.keys():
         outputFile.write(" " + str(feat) + ":" + str(fvMap[feat]));
     outputFile.write("\n")
-
-def trainLibSvm(libraryLocation,libraryOptions,trainingFileName,trainedModelFileName):
-    if os.path.isfile(libraryLocation):
-        call([libraryLocation, libraryOptions, trainingFileName, trainedModelFileName])
-    else:
-        raise Exception("NO LIBRARY FOUND: " + libraryLocation);

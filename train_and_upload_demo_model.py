@@ -2,13 +2,28 @@ import sys
 import json
 import httplib
 import urllib
+import newlibsvm_formatter
 import libsvm_formatter
+import minmax as mm
 
 from optparse import OptionParser
+from subprocess import call
 from multiprocessing import Pool
+
 
 solrQueryUrl = ""
 
+def trainLibSvm(libraryLocation,libraryOptions,trainingFileName,trainedModelFileName):
+    try:
+        cmd = " ".join([libraryLocation, libraryOptions, trainingFileName, trainedModelFileName])
+        print "Running: %s" % (cmd)
+        retcode = call(cmd, shell=True)
+        if retcode < 0:
+            print >>sys.stderr, "Child was terminated by signal", -retcode
+        else:
+            print >>sys.stderr, "Child returned", retcode
+    except OSError as e:
+        print >>sys.stderr, "Execution failed:", e
 
 def setupSolr(collection, host, port, featuresFile, featureStoreName):
     '''Sets up solr with the proper features for the test'''
@@ -55,7 +70,6 @@ def generateQueries(userQueriesFile, collection, requestHandler, solrFeatureStor
 
     solrQueryUrls = [] # A list of tuples with solrQueryUrl,solrQuery,docId,scoreForPQ,source
     with open(userQueriesFile) as input:
-
         for line in input:
             line = line.strip();
             searchText,docId,score,source = line.split("|");
@@ -84,11 +98,9 @@ def generateHttpRequest(collection, requestHandler, solrFeatureStoreName, efiPar
 
     return solrQuery
 
-
 def generateTrainingData(solrQuery):
     '''Given a list of solr queries, yields a tuple of query , docId , score , source , feature vector for each query.
     Feature Vector is a list of strings of form "key=value"'''
-
 
     queryUrl,query,docId,score,source, host, port = solrQuery
 
@@ -104,23 +116,26 @@ def generateTrainingData(solrQuery):
         docs = msgDict['response']['docs']
         if len(docs) > 0 and "[features]" in docs[0]:
             if not msgDict['response']['docs'][0]["[features]"] == None:
-                fv = msgDict['response']['docs'][0]["[features]"];
+                fv = msgDict['response']['docs'][0]["[features]"]
             else:
-                print "ERROR NULL FV FOR: " + docId;
+                print "ERROR NULL FV FOR: " + docId
                 print msg
+                conn.close()
                 return ()
         else:
             print "ERROR FOR: " + docId;
             print msg
             print >> sys.stderr, docId
+            conn.close()
             return ()
 
         if r.status == httplib.OK:
-            print "...http connection was ok for: " + queryUrl
+            print "...htitp connection was ok for: " + queryUrl
             conn.close()
             return (query,docId,score,source,fv.split(","))
         else:
             raise Exception("Status: {0} {1}\nResponse: {2}".format(r.status, r.reason, msg))
+            conn.close()
             return ()
 
     except Exception as e:
@@ -173,7 +188,9 @@ def main(argv=None):
         setupSolr(config["collection"], config["host"], config["port"], config["solrFeaturesFile"], config["solrFeatureStoreName"])
 
         print "Converting user queries ("+config["userQueriesFile"]+") into Solr queries for feature extraction"
+
         reRankQueries = generateQueries(config["userQueriesFile"], config["collection"], config["requestHandler"], config["solrFeatureStoreName"], config["efiParams"], config["host"], config["port"])
+
 
         print "Running Solr queries to extract features"
 
@@ -184,23 +201,32 @@ def main(argv=None):
         fvGenerator = [t for t in fvGenerator if t and len(t) > 0]
 
         #print list(fvGenerator)
-        formatter = libsvm_formatter.LibSvmFormatter()
-        formatter.processQueryDocFeatureVector(fvGenerator,config["trainingFile"])
+
+        if config["using_new_libsvm"]:
+            print "Using NEW libsvm"
+            formatter = newlibsvm_formatter.LibSvmFormatter()
+        else:
+            print "Using OLD libsvm"
+            formatter = libsvm_formatter.LibSvmFormatter()
+
+        min_max = {}
+        mm.setupMinMax(config["solrFeaturesFile"], min_max)
+
+        formatter.processQueryDocFeatureVector(fvGenerator,config["trainingFile"], min_max)
+
+        if config["using_min_max"]:
+            print "MINMAX:", min_max
+            formatter.reProcessQueryDocFeatureVector(min_max,config["trainingFile"]);
 
         print "Training model using '"+config["trainingLibraryLocation"]+" "+config["trainingLibraryOptions"]+"'"
         print "Training file: %s and output model %s" % (config["trainingFile"], config["trainedModelFile"])
 
-        libsvm_formatter.trainLibSvm(config["trainingLibraryLocation"],config["trainingLibraryOptions"],config["trainingFile"],config["trainedModelFile"])
-        """
-        print "TRYING"
-        from subprocess import call
-        call([config["trainingLibraryLocation"],config["trainingFile"],config["trainedModelFile"]])
-        print [config["trainingLibraryLocation"],config["trainingLibraryOptions"],config["trainingFile"],config["trainedModelFile"]]
-        print "DONE"
-        """
+        trainLibSvm(config["trainingLibraryLocation"],config["trainingLibraryOptions"],config["trainingFile"],
+                config["trainedModelFile"])
 
         print "Converting trained model ("+config["trainedModelFile"]+") to solr model ("+config["solrModelFile"]+")"
-        formatter.convertLibSvmModelToLtrModel(config["trainedModelFile"], config["solrModelFile"], config["solrModelName"], config["solrFeatureStoreName"])
+        formatter.convertLibSvmModelToLtrModel(config["trainedModelFile"], config["solrModelFile"],
+                config["solrModelName"], config["solrFeatureStoreName"], config["using_min_max"], min_max)
 
         print "Uploading model ("+config["solrModelFile"]+") to Solr"
         uploadModel(config["collection"], config["host"], config["port"], config["solrModelFile"], config["solrModelName"])
