@@ -1,12 +1,16 @@
 from subprocess import call
+import json
 import os
 
 PAIRWISE_THRESHOLD = 1.e-1
 FEATURE_DIFF_THRESHOLD = 1.e-6
 
 class LibSvmFormatter:
+    def __init__(self, min_max):
+        self.min_max = min_max
+
     def processQueryDocFeatureVector(self,docClickInfo,trainingFile):
-        '''Expects as input a sorted by queries list or generator that provides the context 
+        '''Expects as input a sorted by queries list or generator that provides the context
         for each query in a tuple composed of: (query , docId , relevance , source , featureVector).
         The list of documents that are part of the same query will generate comparisons
         against each other for training. '''
@@ -44,34 +48,32 @@ class LibSvmFormatter:
 
     def convertLibSvmModelToLtrModel(self,libSvmModelLocation,outputFile,modelName,featureStoreName):
         with open(libSvmModelLocation, 'r') as inFile:
-            with open(outputFile,'w') as convertedOutFile:
-                # TODO: use json module instead of direct write
-                convertedOutFile.write('{\n\t"class":"org.apache.solr.ltr.model.LinearModel",\n')
-                convertedOutFile.write('\t"store": "' + str(featureStoreName) + '",\n')
-                convertedOutFile.write('\t"name": "' + str(modelName) + '",\n')
-                convertedOutFile.write('\t"features": [\n')
-                isFirst = True;
-                for featKey in self.featureNameToId.keys():
-                    convertedOutFile.write('\t\t{ "name":"' + featKey  + '"}' if isFirst else ',\n\t\t{ "name":"' + featKey  + '"}' );
-                    isFirst = False;
-                convertedOutFile.write("\n\t],\n");
-                convertedOutFile.write('\t"params": {\n\t\t"weights": {\n');
+            content = {}
 
-                startReading = False
-                isFirst = True
-                counter = 1
-                for line in inFile:
-                    if startReading:
-                        newParamVal = float(line.strip())
-                        if not isFirst:
-                            convertedOutFile.write(',\n\t\t\t"' + self.featureIdToName[counter] + '":' + str(newParamVal))
-                        else:
-                            convertedOutFile.write('\t\t\t"' + self.featureIdToName[counter] + '":' + str(newParamVal))
-                            isFirst = False
-                        counter += 1
-                    elif line.strip() == 'w':
-                        startReading = True
-                convertedOutFile.write('\n\t\t}\n\t}\n}')
+            content["class"] = "org.apache.solr.ltr.model.LinearModel"
+            content["store"] = str(featureStoreName)
+            content["name"] = str(modelName)
+            content["features"] = []
+
+            for featKey in self.featureNameToId.keys():
+                #norm = {"class": "org.apache.solr.ltr.norm.MinMaxNormalizer",  "params":{ "min":"0", "max":"1" } }
+                #norm = {"class": "org.apache.solr.ltr.norm.StandardNormalizer",  "params":{ "avg":"0", "std":"1" } }
+                #content["features"].append({"name" : featKey, "norm": norm})
+                content["features"].append({"name" : featKey})
+            content["params"] = {"weights":{}}
+
+            startReading = False
+            counter = 1
+            for line in inFile:
+                if startReading:
+                    newParamVal = float(line.strip())
+                    content["params"]["weights"][self.featureIdToName[counter]] = float(newParamVal)
+                    counter += 1
+                elif line.strip() == 'w':
+                    startReading = True
+
+        with open(outputFile,'w') as convertedOutFile:
+            json.dump(content, convertedOutFile, sort_keys=False, indent=4)
 
 def _writeRankSVMPairs(listOfFeatures,output):
     '''Given a list of (relevance, {Features Map}) where the list represents
@@ -82,7 +84,7 @@ def _writeRankSVMPairs(listOfFeatures,output):
       (4, {1:0.9, 2:0.9, 3:0.1})
       (3, {1:0.7, 2:0.9, 3:0.2})
       (1, {1:0.1, 2:0.9, 6:0.1})
-    ]    
+    ]
     '''
     for d1 in range(0,len(listOfFeatures)):
         for d2 in range(d1+1,len(listOfFeatures)):
