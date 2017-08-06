@@ -58,18 +58,24 @@ def issueQuery(searchText, host, port, collection, requestHandler,
         docs = msgDict['response']['docs']
 
     except Exception as e:
-        print msg
         print e
     conn.close()
     return docs
 
-def save_mmr(docs_rerank, option, mrr):
+def save_avg_prec(docs_rerank, docids, option, avg_prec):
+    avg = []
+    rel_so_far = 0.0
+
     for i in range(len(docs_rerank)):
         d = docs_rerank[i]
-        if docid == d["Id"]:
-            mrr[option].append(1./(i+1))
-            return
-    mrr[option].append(0.0)
+        if d["Id"] in docids:
+            rel_so_far += 1
+            avg.append( rel_so_far / (i+1) )
+
+    if len(avg) == 0:
+        avg.append(0.0)
+
+    avg_prec[option].append(np.mean(avg))
 
 if __name__ == "__main__":
 
@@ -82,10 +88,17 @@ if __name__ == "__main__":
     parser.add_option('-f', '--file',
                       dest='queryFile',
                       help='File with a list of <query>|<docid>')
+    parser.add_option('-r', '--rerank',
+                      dest='rerankN',
+                      help='Number of documents to be part of the rererank set')
+    parser.add_option('-n', '--nqueries',
+                      dest='nqueries',
+                      default = "1000",
+                      help='Number of queries to run (default=1000)')
 
     (options, args) = parser.parse_args()
 
-    if options.configFile == None or options.queryFile == None:
+    if options.configFile == None or options.queryFile == None or options.rerankN == None:
         parser.print_help()
         sys.exit(1)
 
@@ -95,29 +108,33 @@ if __name__ == "__main__":
     with open(options.queryFile) as queryFile:
         queries = [line.split("|") for line in queryFile.readlines()]
 
-    mrr = {"normal" : [], "rerank": []}
+    avg_prec = {"normal" : [], "rerank": []}
 
     random.seed(1)
     qs = []
-    for i in range(1000):
+    for i in range(int(options.nqueries)):
         qs.append(random.choice(queries))
+
     print "Running %d queries..." % (len(qs))
-    for query, docid in qs:
-        docid = docid.strip()
+    for i, (query, docids) in enumerate(qs):
+        docids = docids.strip().split(",")
 
         docs_rerank = issueQuery(query, config["host"], config["port"], config["collection"],
                           config["requestHandler"], config["solrFeatureStoreName"],
-                          config["efiParams"], "1000", config["solrModelName"], True)
+                          config["efiParams"], options.rerankN, config["solrModelName"], True)
 
         docs_normal = issueQuery(query, config["host"], config["port"], config["collection"],
                           config["requestHandler"], config["solrFeatureStoreName"],
                           config["efiParams"], None, config["solrModelName"], True)
 
-        save_mmr(docs_rerank, "rerank", mrr)
-        save_mmr(docs_normal, "normal", mrr)
+        save_avg_prec(docs_rerank, docids, "rerank", avg_prec)
+        save_avg_prec(docs_normal, docids, "normal", avg_prec)
 
+        progress = 100. * i / len(qs)
+        sys.stdout.write("Current Progress: %.2f%%   \r" % (progress) )
+        sys.stdout.flush()
 
-    print "MRR for normal Trip: %.3f - std %.4f" % (np.mean(mrr["normal"]), np.std(mrr["normal"]))
-    print "MRR for reranked Trip: %.3f - std %.4f" % (np.mean(mrr["rerank"]), np.std(mrr["rerank"]) )
-    print "Improvement: %.2f%%" % ( 100. * ((np.mean(mrr["rerank"]) / np.mean(mrr["normal"]))- 1.0))
+    print "MAP for normal Trip: %.3f - std %.4f" % (np.mean(avg_prec["normal"]), np.std(avg_prec["normal"]))
+    print "MAP for reranked Trip: %.3f - std %.4f" % (np.mean(avg_prec["rerank"]), np.std(avg_prec["rerank"]) )
+    print "Improvement: %.2f%%" % ( 100. * ((np.mean(avg_prec["rerank"]) / np.mean(avg_prec["normal"]))- 1.0))
 

@@ -1,13 +1,20 @@
 import pandas as pd
-import numpy as np
+import json
 import sys
-import re
-from preprocessing import *
+from preprocessing import removeEmptyKeywords, removeEmptyDocLists, preprocessKeywords
+from preprocessing import assignQueryIds, transformData
 
 """
 Given a df.pickle with all query logs, it outputs the query and the last document clicked
 """
+
+if len(sys.argv) != 3:
+    print "Parameters are not correctly set"
+    print "python create_gt_eval.py input_file=df.pickle strategy=[all|first|last]"
+    sys.exit(0)
+
 input_file = sys.argv[1]
+strategy = sys.argv[2]
 
 # Loads pickle created by load_logs.py
 df = pd.read_pickle(input_file)
@@ -29,7 +36,7 @@ def extract_docs_from_serp(serp):
     return docs
 
 df = df.sort_values(["SessionId","DateCreated"]).reset_index(drop=True)
-groupSets = df[["Documents", "SessionId", "Position", "KeywordsSet", "DateCreated", "DocumentId"]].groupby(["SessionId", "KeywordsSet"])
+groupSets = df.head(10)[["Documents", "SessionId", "Position", "KeywordsSet", "DateCreated", "DocumentId"]].groupby(["SessionId", "KeywordsSet"])
 
 """
 Here I am considering relevant ONLY the last click in the session.
@@ -39,12 +46,22 @@ for group in groupSets:
     name, rows = group
     query = ' '.join(name[1])
 
-    lastDocClicked = None
+    docs = []
+    if strategy == "last":
+        for idx, row in rows.iterrows():
+            clicked = row["DocumentId"]
+        docs = [clicked]
 
-    for idx, row in rows.iterrows():
-        clicked = row["DocumentId"]
-        # recods pos and docid for the last clicked document
-        lastDocClicked = clicked
+    elif strategy == "first":
+        for idx, row in rows.iterrows():
+            clicked = row["DocumentId"]
+            docs = [clicked]
+            break
 
-    print("%s|%s" % (query, lastDocClicked))
+    elif strategy == "all":
+        for idx, row in rows.iterrows():
+            clicked = row["DocumentId"]
+            docs.append(clicked)
+
+    print("%s|%s" % (query, ",".join(map(str,docs))))
 
