@@ -1,9 +1,7 @@
 import json
+import xml.etree.ElementTree as ET
 from LTRLibrary import LTRLibrary
 import misc
-
-PAIRWISE_THRESHOLD = 1.e-1
-FEATURE_DIFF_THRESHOLD = 1.e-6
 
 class LibraryFormatter(LTRLibrary):
 
@@ -32,6 +30,7 @@ class LibraryFormatter(LTRLibrary):
                 misc.writeRankLibLine(rel, query, fv, fout)
         misc.rename(trainingFile + ".tmp", trainingFile)
 
+
     def processQueryDocFeatureVector(self,docClickInfo,trainingFile, min_max):
         with open(trainingFile,"w") as output:
             self.featureNameToId  = {}
@@ -52,10 +51,10 @@ class LibraryFormatter(LTRLibrary):
                 curListOfFv.append((relevance,self._makeFeaturesMap(featureVector)))
             misc.writeRankLib(curListOfFv,output,self.curQuery) #This catches the last list of comparisons
 
-    def convertLibraryModelToLtrModel(self,libSvmModelLocation,outputFile,modelName,featureStoreName, useMinMax, min_max):
+    def convertLibraryModelToLtrModel(self, libraryModelLocation, outputFile, modelName, featureStoreName, useMinMax, min_max):
         content = {}
 
-        content["class"] = "org.apache.solr.ltr.model.LinearModel"
+        content["class"] = "org.apache.solr.ltr.model.MultipleAdditiveTreesModel"
         content["store"] = str(featureStoreName)
         content["name"] = str(modelName)
         content["features"] = []
@@ -69,22 +68,62 @@ class LibraryFormatter(LTRLibrary):
 
                 norm = {"class": "org.apache.solr.ltr.norm.MinMaxNormalizer",  "params":{ "min": str(min_), "max": str(max_) } }
                 content["features"].append({"name" : featKey, "norm": norm})
-
             else:
                 content["features"].append({"name" : featKey})
 
-        content["params"] = {"weights":{}}
-        print content
+        with open(libraryModelLocation, 'r') as inFile:
+            model = inFile.readlines()
 
-        with open(libSvmModelLocation, 'r') as inFile:
-            lastline = inFile.readlines()[-1]
-        results = lastline.split(" ")
-        results = dict( map(float, r.split(":")) for r in results[1:-1])
+        i = 0
+        while model[i].startswith("##"):
+            i += 1
 
-        #newParamVal = float(line.strip())
-        for i in range(1, len(self.featureIdToName)+1):
-            content["params"]["weights"][self.featureIdToName[i]] = 0.0 if i not in results else results[i]
+        model = model[i+1:]
+        model = [l.strip() for l in model]
+        root = ET.fromstring(' '.join(model))
+
+        forest = []
+        for child in root:
+            tree = {}
+            tree["weight"] = child.attrib["weight"]
+            first_split = child.find("split")
+
+            tree_dict = self.get_tree(first_split)
+            tree["root"] = tree_dict
+
+            forest.append(tree)
+
+        content["params"] = {"trees": forest}
 
         with open(outputFile,'w') as convertedOutFile:
             json.dump(content, convertedOutFile, sort_keys=False, indent=4)
+
+    def get_tree(self, tree):
+
+        tree_dict = {}
+
+        if tree.find("output") is not None:
+            tree_dict["value"] = tree.find("output").text.strip()
+            return tree_dict
+
+        tree_dict["feature"] = self.featureIdToName[ int(tree.find("feature").text) ]
+        tree_dict["threshold"] = tree.find("threshold").text.strip()
+
+        left_tree, right_tree = None, None
+        for s in tree.findall("split"):
+            if s.attrib["pos"] == "left":
+                left_tree = s
+            if s.attrib["pos"] == "right":
+                right_tree = s
+
+        if left_tree is not None:
+            left = self.get_tree(left_tree)
+            tree_dict["left"] = left
+
+        if right_tree is not None:
+            right = self.get_tree(right_tree)
+            tree_dict["right"] = right
+
+        return tree_dict
+
 

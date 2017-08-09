@@ -4,6 +4,8 @@ import httplib
 import urllib
 import newlibsvm_formatter
 import libsvm_formatter
+import tree_formatter
+import misc
 import minmax as mm
 
 from optparse import OptionParser
@@ -13,9 +15,12 @@ from multiprocessing import Pool
 
 solrQueryUrl = ""
 
-def trainLibSvm(libraryLocation,libraryOptions,trainingFileName,trainedModelFileName):
+def runLTRFramework(library, libraryLocation,libraryOptions,trainingFileName,trainedModelFileName):
     try:
-        cmd = " ".join([libraryLocation, libraryOptions, trainingFileName, trainedModelFileName])
+        if library == "RankLib6":
+            cmd = "java -jar %s -train %s -ranker 6 -save %s" % (libraryLocation, trainingFileName, trainedModelFileName)
+        else:
+            cmd = " ".join([libraryLocation, libraryOptions, trainingFileName, trainedModelFileName])
         print "Running: %s" % (cmd)
         retcode = call(cmd, shell=True)
         if retcode < 0:
@@ -200,14 +205,16 @@ def main(argv=None):
 
         fvGenerator = [t for t in fvGenerator if t and len(t) > 0]
 
-        #print list(fvGenerator)
+        #print list(fvGNoneator)
 
-        if config["using_new_libsvm"]:
+        if config["library"] == "new_libsvm":
             print "Using NEW libsvm"
-            formatter = newlibsvm_formatter.LibSvmFormatter()
-        else:
+            formatter = newlibsvm_formatter.LibraryFormatter()
+        elif config["library"] == "old_libsvm":
             print "Using OLD libsvm"
-            formatter = libsvm_formatter.LibSvmFormatter()
+            formatter = libsvm_formatter.LibraryFormatter()
+        elif config["library"] == "RankLib6":
+            formatter = tree_formatter.LibraryFormatter()
 
         min_max = {}
         mm.setupMinMax(config["solrFeaturesFile"], min_max)
@@ -217,15 +224,18 @@ def main(argv=None):
         if config["using_min_max"]:
             print "MINMAX:", min_max
             formatter.reProcessQueryDocFeatureVector(min_max,config["trainingFile"]);
+            misc.pickle_obj(config["min_max_pickle"], min_max)
 
-        print "Training model using '"+config["trainingLibraryLocation"]+" "+config["trainingLibraryOptions"]+"'"
+        formatter.save_pickle(config["library_pickle"])
+
+        print "Training model using '" + config["trainingLibraryLocation"] + " " + config["trainingLibraryOptions"] + "'"
         print "Training file: %s and output model %s" % (config["trainingFile"], config["trainedModelFile"])
 
-        trainLibSvm(config["trainingLibraryLocation"],config["trainingLibraryOptions"],config["trainingFile"],
-                config["trainedModelFile"])
+        runLTRFramework(config["library"], config["trainingLibraryLocation"],
+                config["trainingLibraryOptions"], config["trainingFile"], config["trainedModelFile"])
 
         print "Converting trained model ("+config["trainedModelFile"]+") to solr model ("+config["solrModelFile"]+")"
-        formatter.convertLibSvmModelToLtrModel(config["trainedModelFile"], config["solrModelFile"],
+        formatter.convertLibraryModelToLtrModel(config["trainedModelFile"], config["solrModelFile"],
                 config["solrModelName"], config["solrFeatureStoreName"], config["using_min_max"], min_max)
 
         print "Uploading model ("+config["solrModelFile"]+") to Solr"

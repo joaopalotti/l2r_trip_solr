@@ -1,9 +1,10 @@
 import json
+from LTRLibrary import LTRLibrary
 
 PAIRWISE_THRESHOLD = 1.e-1
 FEATURE_DIFF_THRESHOLD = 1.e-6
 
-class LibSvmFormatter:
+class LibraryFormatter(LTRLibrary):
 
     def processQueryDocFeatureVector(self,docClickInfo,trainingFile, min_max=False):
         '''Expects as input a sorted by queries list or generator that provides the context
@@ -25,24 +26,7 @@ class LibSvmFormatter:
                 curListOfFv.append((relevance,self._makeFeaturesMap(featureVector)))
             _writeRankSVMPairs(curListOfFv,output); #This catches the last list of comparisons
 
-    def _makeFeaturesMap(self,featureVector):
-        '''expects a list of strings with "feature name":"feature value" pairs. Outputs a map of map[key] = value.
-        Where key is now an integer. libSVM requires the key to be an integer but not all libraries have
-        this requirement.'''
-        features = {}
-        for keyValuePairStr in featureVector:
-            featName,featValue = keyValuePairStr.split("=");
-            features[self._getFeatureId(featName)] = float(featValue);
-        return features
-
-    def _getFeatureId(self,key):
-        if key not in self.featureNameToId:
-                self.featureNameToId[key] = self.curFeatIndex;
-                self.featureIdToName[self.curFeatIndex] = key;
-                self.curFeatIndex += 1;
-        return self.featureNameToId[key];
-
-    def convertLibSvmModelToLtrModel(self,libSvmModelLocation,outputFile,modelName,featureStoreName, useMinMax, min_max):
+    def convertLibraryModelToLtrModel(self, libSvmModelLocation, outputFile, modelName, featureStoreName, useMinMax, min_max):
         with open(libSvmModelLocation, 'r') as inFile:
             content = {}
 
